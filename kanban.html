@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Kanban Board</title>
+    <style>
+        body { font-family: Arial; background: #f5f5f5; padding: 0; margin: 0; }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 16.67%;
+            background: white;
+            border-right: 1px solid #ddd;
+            transition: transform 0.3s ease;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar.minimized {
+            transform: translateX(-100%);
+        }
+        body.dark-mode .sidebar {
+            background: #2d2d2d;
+            border-right-color: #555;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        body.dark-mode .sidebar-header {
+            border-bottom-color: #555;
+            color: #e0e0e0;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .board-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .board-item:hover {
+            background: #f0f0f0;
+            transform: translateX(2px);
+        }
+        .board-item.active {
+            background: #667eea;
+            color: white;
+        }
+        body.dark-mode .board-item {
+            background: #3d3d3d;
+            color: #e0e0e0;
+        }
+        body.dark-mode .board-item:hover {
+            background: #4d4d4d;
+        }
+        body.dark-mode .board-item.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .board-item-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .board-item-count {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+        
+        .board-item-dates {
+            font-size: 0.75em;
+            opacity: 0.8;
+        }
+        
+        .date-divider {
+            padding: 8px 12px;
+            margin: 12px 0 8px 0;
+            font-weight: 600;
+            font-size: 0.85em;
+            color: #666;
+            border-bottom: 2px solid #ddd;
+        }
+        body.dark-mode .date-divider {
+            color: #999;
+            border-bottom-color: #555;
+        }
+        
+        .sidebar-toggle {
+            position: fixed;
+            left: 16.67%;
+            top: 20px;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            border-radius: 0 20px 20px 0;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            z-index: 1001;
+            transition: left 0.3s ease;
+        }
+        .sidebar-toggle.minimized {
+            left: 0;
+        }
+        .sidebar-toggle:hover { background: #e0e0e0; }
+        body.dark-mode .sidebar-toggle { background: #555; color: white; border-color: #666; }
+        body.dark-mode .sidebar-toggle:hover { background: #666; }
+        
+        .main-content {
+            margin-left: 16.67%;
+            margin-right: 16.67%;
+            padding: 20px;
+            transition: margin-left 0.3s ease, margin-right 0.3s ease;
+            position: relative;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        .main-content.artifacts-collapsed {
+            margin-right: 0;
+        }
+        
+        /* Artifacts Sidebar */
+        .artifacts-sidebar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            height: 100vh;
+            width: 16.67%;
+            background: white;
+            border-left: 1px solid #ddd;
+            transition: transform 0.3s ease;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+        }
+        .artifacts-sidebar.minimized {
+            transform: translateX(100%);
+        }
+        body.dark-mode .artifacts-sidebar {
+            background: #2d2d2d;
+            border-left-color: #555;
+        }
+        
+        .artifacts-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        body.dark-mode .artifacts-header {
+            border-bottom-color: #555;
+            color: #e0e0e0;
+        }
+        
+        .artifacts-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .artifact-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .artifact-item:hover {
+            background: #f0f0f0;
+            transform: translateX(-2px);
+        }
+        body.dark-mode .artifact-item {
+            background: #3d3d3d;
+            color: #e0e0e0;
+        }
+        body.dark-mode .artifact-item:hover {
+            background: #4d4d4d;
+        }
+        
+        .artifact-item-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .artifact-item-icon {
+            font-size: 1.2em;
+        }
+        
+        .artifact-item-date {
+            font-size: 0.75em;
+            opacity: 0.8;
+        }
+        
+        .artifacts-toggle {
+            position: fixed;
+            right: 16.67%;
+            top: 20px;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            border-radius: 20px 0 0 20px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: -2px 2px 8px rgba(0,0,0,0.1);
+            z-index: 1001;
+            transition: right 0.3s ease;
+        }
+        .artifacts-toggle.minimized {
+            right: 0;
+        }
+        .artifacts-toggle:hover { background: #e0e0e0; }
+        body.dark-mode .artifacts-toggle { background: #555; color: white; border-color: #666; }
+        body.dark-mode .artifacts-toggle:hover { background: #666; }
+        
+        .artifacts-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-style: italic;
+        }
+        
+        .task-selected {
+            border-color: #667eea !important;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3) !important;
+        }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .board {
+            display: none;
+            gap: 20px;
+            overflow-x: auto;
+        }
+        .board.active { display: flex; }
+        .column { background: white; border-radius: 8px; width: 280px; padding: 16px; }
+        .column h3 { margin: 0 0 16px 0; }
+        .column > div[id] { min-height: 100px; padding: 8px; border-radius: 4px; transition: background 0.2s; }
+        .task { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 12px; cursor: pointer; }
+        .task:hover { border-color: #999; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .priority { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .high { background: #fee; color: #c00; }
+        .medium { background: #ffc; color: #960; }
+        .low { background: #def; color: #036; }
+        .column button { width: 100%; padding: 8px; background: transparent; border: none; border-radius: 4px; cursor: pointer; color: #666; font-weight: 600; }
+        .column button:hover { background: #f5f5f5; }
+        .wip { float: right; font-size: 12px; color: #666; background: #ffc; padding: 2px 6px; border-radius: 3px; }
+        .form { background: white; border: 2px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .form input, .form select, .form textarea { width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form textarea { min-height: 60px; resize: vertical; font-family: Arial; }
+        .form button { margin-top: 4px; }
+        .form-buttons { display: flex; gap: 8px; }
+        .form-buttons button { flex: 1; }
+        .task-title { font-weight: 600; margin-bottom: 4px; }
+        .task-description { font-size: 0.85em; color: #666; margin-bottom: 8px; line-height: 1.4; }
+        body.dark-mode .task-description { color: #b0b0b0; }
+        .btn-save { background: #4CAF50; color: white; border: none; }
+        .btn-save:hover { background: #45a049; }
+        .btn-cancel { background: #f44336; color: white; border: none; }
+        .btn-cancel:hover { background: #da190b; }
+        .btn-delete { background: #ff9800; color: white; border: none; }
+        .btn-delete:hover { background: #e68900; }
+        .legend {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .legend.active { display: block; }
+        .legend h3 { margin-top: 0; }
+        .legend-items { display: flex; gap: 20px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        body.dark-mode .legend { background: #2d2d2d; color: #e0e0e0; }
+        
+        /* Legend toggle button */
+        .legend-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: auto;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .legend-toggle:hover { background: #e0e0e0; }
+        body.dark-mode .legend-toggle { background: #555; color: white; border-color: #666; }
+        body.dark-mode .legend-toggle:hover { background: #666; }
+        
+        /* Dark mode styles */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .column { background: #2d2d2d; }
+        body.dark-mode .column h3 { color: #e0e0e0; }
+        body.dark-mode .task { background: #3d3d3d; border-color: #4d4d4d; color: #e0e0e0; }
+        body.dark-mode .task:hover { border-color: #666; }
+        body.dark-mode .column button { color: #b0b0b0; }
+        body.dark-mode .column button:hover { background: #3d3d3d; }
+        body.dark-mode .form { background: #2d2d2d; border-color: #555; }
+        body.dark-mode .form input, body.dark-mode .form select, body.dark-mode .form textarea { background: #3d3d3d; border-color: #4d4d4d; color: #e0e0e0; }
+        body.dark-mode .legend { background: #2d2d2d; color: #e0e0e0; }
+        body.dark-mode .column > div[id] { background: transparent; }
+        
+        /* Dark mode toggle button */
+        .dark-mode-toggle { 
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            width: auto;
+            background: #f0f0f0; 
+            color: #333; 
+            border: 1px solid #ddd;
+            padding: 10px 15px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .dark-mode-toggle:hover { background: #e0e0e0; }
+        body.dark-mode .dark-mode-toggle { background: #555; color: white; border-color: #666; }
+        body.dark-mode .dark-mode-toggle:hover { background: #666; }
+        
+        /* View toggle button */
+        .view-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: auto;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .view-toggle:hover { background: #e0e0e0; }
+        body.dark-mode .view-toggle { background: #555; color: white; border-color: #666; }
+        body.dark-mode .view-toggle:hover { background: #666; }
+        
+        /* Document view */
+        .document-view {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .document-view.active { display: block; }
+        .board.active { display: flex; }
+        
+        .document-view h2 {
+            font-size: 1.8em;
+            margin: 30px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+        body.dark-mode .document-view h2 { border-bottom-color: #555; }
+        
+        .document-view ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        
+        .document-view li {
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+            cursor: text;
+        }
+        body.dark-mode .document-view li { background: #2d2d2d; border-left-color: #555; color: #e0e0e0; }
+        
+        .document-view li:hover {
+            background: #f9f9f9;
+            border-left-color: #999;
+        }
+        body.dark-mode .document-view li:hover { background: #3d3d3d; border-left-color: #666; }
+        
+        .document-view li[contenteditable="true"]:focus {
+            outline: 2px solid #4CAF50;
+            background: #fff;
+        }
+        body.dark-mode .document-view li[contenteditable="true"]:focus { background: #3d3d3d; }
+        
+        .document-view .task-info {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 6px;
+        }
+        body.dark-mode .document-view .task-info { color: #999; }
+        
+        .doc-empty {
+            color: #999;
+            font-style: italic;
+            padding: 12px 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">Kanban Boards</div>
+        <div class="sidebar-content" id="boardsList">
+            <!-- Board list will be rendered here -->
+        </div>
+    </div>
+    
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle boards list">📁</button>
+    
+    <!-- Artifacts Sidebar -->
+    <div class="artifacts-sidebar" id="artifactsSidebar">
+        <div class="artifacts-header">Task Artifacts</div>
+        <div class="artifacts-content" id="artifactsList">
+            <div class="artifacts-empty">Select a task to view artifacts</div>
+        </div>
+    </div>
+    
+    <button class="artifacts-toggle" id="artifactsToggle" onclick="toggleArtifacts()" title="Toggle artifacts panel">📎</button>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌓</button>
+        <button class="view-toggle" onclick="toggleView()" title="Toggle between Kanban and Document view">📋 Document View</button>
+        <button class="legend-toggle" onclick="toggleLegend()" title="Toggle priority legend">ℹ️ Priority Levels</button>
+        
+        <div class="header">
+        <h1>🚀 Kanban Board</h1>
+        <p>Click "+ Add Task" to create • Click any card to edit</p>
+    </div>
+    
+    <div class="board active">
+        <div class="column">
+            <h3>📋 Backlog</h3>
+            <div id="backlog" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'backlog')" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"></div>
+            <button onclick="showAddForm('backlog')">+ Add Task</button>
+        </div>
+        
+        <div class="column">
+            <h3>📝 To Do</h3>
+            <div id="todo" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'todo')" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"></div>
+            <button onclick="showAddForm('todo')">+ Add Task</button>
+        </div>
+        
+        <div class="column">
+            <h3>⚡ In Progress <span class="wip" id="wip">0/3</span></h3>
+            <div id="inprogress" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'inprogress')" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"></div>
+            <button onclick="showAddForm('inprogress')">+ Add Task</button>
+        </div>
+        
+        <div class="column">
+            <h3>👀 In Review</h3>
+            <div id="review" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'review')" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"></div>
+            <button onclick="showAddForm('review')">+ Add Task</button>
+        </div>
+        
+        <div class="column">
+            <h3>✅ Done</h3>
+            <div id="done" ondragover="handleDragOver(event)" ondrop="handleDrop(event, 'done')" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"></div>
+            <button onclick="showAddForm('done')">+ Add Task</button>
+        </div>
+    </div>
+
+    <div class="document-view" id="documentView">
+        <!-- Document view will be rendered here -->
+    </div>
+
+    <div class="legend">
+        <h3>Priority Levels</h3>
+        <div class="legend-items">
+            <div class="legend-item">
+                <span class="priority high">HIGH</span>
+                <span>Urgent tasks requiring immediate attention</span>
+            </div>
+            <div class="legend-item">
+                <span class="priority medium">MEDIUM</span>
+                <span>Important tasks with moderate urgency</span>
+            </div>
+            <div class="legend-item">
+                <span class="priority low">LOW</span>
+                <span>Nice-to-have tasks with low urgency</span>
+            </div>
+        </div>
+    </div>
+    </div><!-- End main-content -->
+
+    <script>
+    var nextId = 3;
+    var nextBoardId = 9;
+    var currentBoardId = 1;
+    var sidebarMinimized = false;
+    
+    var boards = {
+        1: {
+            id: 1,
+            name: 'Website Redesign',
+            created: new Date('2025-10-15').toISOString(),
+            modified: new Date('2025-11-02').toISOString(),
+            tasks: {
+                1: {title: 'Create wireframes', description: 'Design initial layout mockups', priority: 'high', date: 'Nov 5', col: 'inprogress'},
+                2: {title: 'User testing feedback', description: 'Gather feedback from beta testers', priority: 'medium', date: 'Nov 8', col: 'todo'},
+                3: {title: 'Update color scheme', description: 'Apply new brand colors', priority: 'low', date: '', col: 'todo'}
+            },
+            nextTaskId: 4
+        },
+        2: {
+            id: 2,
+            name: 'Mobile App Development',
+            created: new Date('2025-10-20').toISOString(),
+            modified: new Date('2025-11-02').toISOString(),
+            tasks: {
+                1: {title: 'Setup React Native project', description: 'Initialize project with TypeScript', priority: 'high', date: 'Nov 3', col: 'done'},
+                2: {title: 'Design navigation flow', description: 'Create app navigation structure', priority: 'high', date: 'Nov 5', col: 'inprogress'},
+                3: {title: 'Implement authentication', description: 'Add login and signup screens', priority: 'high', date: 'Nov 7', col: 'todo'},
+                4: {title: 'Add push notifications', description: 'Integrate notification service', priority: 'medium', date: 'Nov 10', col: 'todo'},
+                5: {title: 'Create onboarding tutorial', description: 'Design first-time user experience', priority: 'low', date: '', col: 'backlog'}
+            },
+            nextTaskId: 6
+        },
+        3: {
+            id: 3,
+            name: 'Q4 Marketing Campaign',
+            created: new Date('2025-10-01').toISOString(),
+            modified: new Date('2025-11-01').toISOString(),
+            tasks: {
+                1: {title: 'Write email copy', description: 'Draft promotional email content', priority: 'high', date: 'Nov 4', col: 'review'},
+                2: {title: 'Design social media graphics', description: 'Create Instagram and Twitter posts', priority: 'high', date: 'Nov 6', col: 'inprogress'},
+                3: {title: 'Schedule posts', description: 'Queue up social media calendar', priority: 'medium', date: 'Nov 8', col: 'todo'},
+                4: {title: 'Track analytics', description: 'Monitor campaign performance metrics', priority: 'low', date: '', col: 'backlog'}
+            },
+            nextTaskId: 5
+        },
+        4: {
+            id: 4,
+            name: 'API Documentation',
+            created: new Date('2025-10-25').toISOString(),
+            modified: new Date('2025-10-31').toISOString(),
+            tasks: {
+                1: {title: 'Document authentication endpoints', description: 'Write API docs for auth routes', priority: 'high', date: 'Nov 2', col: 'done'},
+                2: {title: 'Add code examples', description: 'Include sample requests and responses', priority: 'medium', date: 'Nov 5', col: 'todo'},
+                3: {title: 'Review with team', description: 'Get feedback on documentation clarity', priority: 'medium', date: 'Nov 7', col: 'todo'}
+            },
+            nextTaskId: 4
+        },
+        5: {
+            id: 5,
+            name: 'Database Migration',
+            created: new Date('2025-10-18').toISOString(),
+            modified: new Date('2025-10-29').toISOString(),
+            tasks: {
+                1: {title: 'Backup production database', description: 'Create full database backup', priority: 'high', date: 'Oct 28', col: 'done'},
+                2: {title: 'Test migration script', description: 'Run migration on staging environment', priority: 'high', date: 'Oct 30', col: 'done'},
+                3: {title: 'Schedule downtime', description: 'Notify users of maintenance window', priority: 'medium', date: 'Nov 1', col: 'done'},
+                4: {title: 'Execute migration', description: 'Run migration on production', priority: 'high', date: 'Nov 3', col: 'backlog'},
+                5: {title: 'Verify data integrity', description: 'Check all data migrated correctly', priority: 'high', date: 'Nov 3', col: 'backlog'}
+            },
+            nextTaskId: 6
+        },
+        6: {
+            id: 6,
+            name: 'Team Onboarding',
+            created: new Date('2025-10-10').toISOString(),
+            modified: new Date('2025-10-26').toISOString(),
+            tasks: {
+                1: {title: 'Prepare welcome package', description: 'Create onboarding materials', priority: 'medium', date: 'Oct 25', col: 'done'},
+                2: {title: 'Setup dev environment', description: 'Configure laptops and access', priority: 'high', date: 'Oct 28', col: 'done'},
+                3: {title: 'Schedule intro meetings', description: 'Book 1-on-1s with team members', priority: 'medium', date: 'Oct 30', col: 'done'}
+            },
+            nextTaskId: 4
+        },
+        7: {
+            id: 7,
+            name: 'Bug Fixes - Sprint 14',
+            created: new Date('2025-10-22').toISOString(),
+            modified: new Date('2025-10-25').toISOString(),
+            tasks: {
+                1: {title: 'Fix login redirect issue', description: 'Users getting logged out unexpectedly', priority: 'high', date: 'Oct 24', col: 'done'},
+                2: {title: 'Resolve search performance', description: 'Search queries timing out', priority: 'high', date: 'Oct 26', col: 'done'},
+                3: {title: 'Update error messages', description: 'Make error messages more user-friendly', priority: 'low', date: 'Oct 28', col: 'done'},
+                4: {title: 'Fix mobile layout issues', description: 'Buttons overlapping on small screens', priority: 'medium', date: 'Oct 27', col: 'done'}
+            },
+            nextTaskId: 5
+        },
+        8: {
+            id: 8,
+            name: 'Customer Feedback Review',
+            created: new Date('2025-09-28').toISOString(),
+            modified: new Date('2025-10-15').toISOString(),
+            tasks: {
+                1: {title: 'Analyze survey results', description: 'Review Q3 customer satisfaction survey', priority: 'medium', date: 'Oct 10', col: 'done'},
+                2: {title: 'Categorize feedback themes', description: 'Group feedback into common topics', priority: 'medium', date: 'Oct 12', col: 'done'},
+                3: {title: 'Create action items', description: 'Turn feedback into actionable tasks', priority: 'high', date: 'Oct 15', col: 'done'},
+                4: {title: 'Present to leadership', description: 'Share findings with executive team', priority: 'high', date: 'Oct 18', col: 'done'}
+            },
+            nextTaskId: 5
+        }
+    };
+    
+    var tasks = boards[currentBoardId].tasks;
+    var editingId = null;
+    var draggedTaskId = null;
+    var currentView = 'kanban'; // 'kanban' or 'document'
+
+    function formatDate(isoString) {
+        var date = new Date(isoString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var toggle = document.getElementById('sidebarToggle');
+        var mainContent = document.getElementById('mainContent');
+        
+        sidebarMinimized = !sidebarMinimized;
+        
+        if (sidebarMinimized) {
+            sidebar.classList.add('minimized');
+            toggle.classList.add('minimized');
+            mainContent.classList.add('expanded');
+        } else {
+            sidebar.classList.remove('minimized');
+            toggle.classList.remove('minimized');
+            mainContent.classList.remove('expanded');
+        }
+    }
+
+    function renderBoardsList() {
+        var boardsList = document.getElementById('boardsList');
+        var html = '';
+        
+        // Convert boards object to array and sort by modified date (newest first)
+        var boardsArray = [];
+        for (var id in boards) {
+            boardsArray.push(boards[id]);
+        }
+        boardsArray.sort(function(a, b) {
+            return new Date(b.modified) - new Date(a.modified);
+        });
+        
+        var lastDate = null;
+        
+        for (var i = 0; i < boardsArray.length; i++) {
+            var board = boardsArray[i];
+            
+            // Count tasks in this board
+            var taskCount = 0;
+            for (var taskId in board.tasks) {
+                taskCount++;
+            }
+            
+            // Check if we need a date divider
+            var modifiedDate = new Date(board.modified);
+            var modifiedDay = modifiedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            if (modifiedDay !== lastDate) {
+                // Determine the label for this date
+                var today = new Date();
+                var yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                var todayStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                var yesterdayStr = yesterday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                var dateLabel = modifiedDay;
+                if (modifiedDay === todayStr) {
+                    dateLabel = 'Today';
+                } else if (modifiedDay === yesterdayStr) {
+                    dateLabel = 'Yesterday';
+                }
+                
+                html += '<div class="date-divider">' + dateLabel + '</div>';
+                lastDate = modifiedDay;
+            }
+            
+            var isActive = board.id == currentBoardId ? 'active' : '';
+            var taskText = taskCount === 1 ? '1 task' : taskCount + ' tasks';
+            
+            html += '<div class="board-item ' + isActive + '" onclick="switchBoard(' + board.id + ')">' +
+                '<div class="board-item-name">' + board.name + '</div>' +
+                '<div class="board-item-count">' + taskText + '</div>' +
+                '<div class="board-item-dates">' +
+                'Created: ' + formatDate(board.created) +
+                '</div></div>';
+        }
+        
+        boardsList.innerHTML = html;
+    }
+
+    function switchBoard(boardId) {
+        // Save current board state
+        boards[currentBoardId].tasks = tasks;
+        boards[currentBoardId].nextTaskId = nextId;
+        boards[currentBoardId].modified = new Date().toISOString();
+        
+        // Switch to new board
+        currentBoardId = boardId;
+        tasks = boards[currentBoardId].tasks;
+        nextId = boards[currentBoardId].nextTaskId;
+        
+        // Re-render everything
+        render();
+        renderBoardsList();
+        
+        // Update header to show board name
+        document.querySelector('.header h1').textContent = '🚀 ' + boards[currentBoardId].name;
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function toggleLegend() {
+        var legend = document.querySelector('.legend');
+        legend.classList.toggle('active');
+    }
+
+    function toggleView() {
+        var board = document.querySelector('.board');
+        var docView = document.getElementById('documentView');
+        var toggleBtn = document.querySelector('.view-toggle');
+        
+        if (currentView === 'kanban') {
+            currentView = 'document';
+            board.classList.remove('active');
+            docView.classList.add('active');
+            toggleBtn.textContent = '📊 Kanban View';
+            renderDocumentView();
+        } else {
+            currentView = 'kanban';
+            board.classList.add('active');
+            docView.classList.remove('active');
+            toggleBtn.textContent = '📋 Document View';
+        }
+    }
+
+    function renderDocumentView() {
+        var docView = document.getElementById('documentView');
+        var columns = [
+            {id: 'backlog', name: 'Backlog'},
+            {id: 'todo', name: 'To Do'},
+            {id: 'inprogress', name: 'In Progress'},
+            {id: 'review', name: 'In Review'},
+            {id: 'done', name: 'Done'}
+        ];
+        
+        var html = '';
+        for (var i = 0; i < columns.length; i++) {
+            var col = columns[i];
+            html += '<h2>' + col.name + '</h2><ul>';
+            
+            var hasTasks = false;
+            for (var id in tasks) {
+                if (tasks[id].col === col.id) {
+                    hasTasks = true;
+                    var t = tasks[id];
+                    html += '<li>' +
+                        '<div contenteditable="true" data-task-id="' + id + '" data-field="title" onblur="updateTaskFieldFromDoc(' + id + ', \'title\', this)" style="font-weight: 600; margin-bottom: 4px;">' + 
+                        t.title + '</div>';
+                    
+                    if (t.description) {
+                        html += '<div contenteditable="true" data-task-id="' + id + '" data-field="description" onblur="updateTaskFieldFromDoc(' + id + ', \'description\', this)" style="font-size: 0.9em; color: #666; margin-bottom: 8px;">' + 
+                        t.description + '</div>';
+                    } else {
+                        html += '<div contenteditable="true" data-task-id="' + id + '" data-field="description" onblur="updateTaskFieldFromDoc(' + id + ', \'description\', this)" style="font-size: 0.9em; color: #999; font-style: italic; margin-bottom: 8px;">Add description...</div>';
+                    }
+                    
+                    html += '<div class="task-info">' +
+                        '<span class="priority ' + t.priority + '">' + t.priority.toUpperCase() + '</span> • ' +
+                        (t.date ? 'Due: ' + t.date : 'No due date') +
+                        '</div></li>';
+                }
+            }
+            
+            if (!hasTasks) {
+                html += '<li class="doc-empty">No tasks</li>';
+            }
+            
+            html += '</ul>';
+        }
+        
+        docView.innerHTML = html;
+    }
+
+    function updateTaskFieldFromDoc(id, field, element) {
+        var newValue = element.textContent.trim();
+        
+        if (field === 'title') {
+            if (newValue && tasks[id]) {
+                tasks[id].title = newValue;
+                boards[currentBoardId].modified = new Date().toISOString();
+                render();
+                renderBoardsList();
+            }
+        } else if (field === 'description') {
+            if (tasks[id]) {
+                // If the placeholder text is still there, clear it
+                if (newValue === 'Add description...') {
+                    tasks[id].description = '';
+                } else {
+                    tasks[id].description = newValue;
+                }
+                boards[currentBoardId].modified = new Date().toISOString();
+                render();
+                renderBoardsList();
+            }
+        }
+    }
+
+    function handleDragStart(e, id) {
+        draggedTaskId = id;
+        e.target.style.opacity = '0.4';
+    }
+
+    function handleDragEnd(e) {
+        e.target.style.opacity = '1';
+        var cols = document.querySelectorAll('.column > div[id]');
+        for (var i = 0; i < cols.length; i++) {
+            cols[i].style.background = '';
+        }
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        if (e.target.id && e.target.id !== '') {
+            e.target.style.background = '#e8e8e8';
+        }
+    }
+
+    function handleDragLeave(e) {
+        if (e.target.id && e.target.id !== '') {
+            e.target.style.background = '';
+        }
+    }
+
+    function handleDrop(e, col) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        
+        if (draggedTaskId && tasks[draggedTaskId]) {
+            tasks[draggedTaskId].col = col;
+            boards[currentBoardId].modified = new Date().toISOString();
+            render();
+            renderBoardsList();
+        }
+        return false;
+    }
+
+    function showAddForm(col) {
+        var formHtml = '<div class="form">' +
+            '<input type="text" id="taskTitle" placeholder="Task title" autofocus>' +
+            '<textarea id="taskDescription" placeholder="Description (optional)"></textarea>' +
+            '<select id="taskPriority">' +
+            '<option value="high">High Priority</option>' +
+            '<option value="medium" selected>Medium Priority</option>' +
+            '<option value="low">Low Priority</option>' +
+            '</select>' +
+            '<input type="text" id="taskDate" placeholder="Due date (e.g., Nov 20)">' +
+            '<div class="form-buttons">' +
+            '<button class="btn-save" onclick="saveNewTask(\'' + col + '\')">Add</button>' +
+            '<button class="btn-cancel" onclick="render()">Cancel</button>' +
+            '</div>' +
+            '</div>';
+        document.getElementById(col).innerHTML = formHtml + document.getElementById(col).innerHTML;
+        setTimeout(function() {
+            document.getElementById('taskTitle').focus();
+        }, 10);
+    }
+
+    function saveNewTask(col) {
+        var title = document.getElementById('taskTitle').value;
+        if (!title.trim()) {
+            render();
+            return;
+        }
+        var description = document.getElementById('taskDescription').value;
+        var priority = document.getElementById('taskPriority').value;
+        var date = document.getElementById('taskDate').value;
+        
+        var id = nextId++;
+        tasks[id] = {title: title, description: description, priority: priority, date: date, col: col};
+        boards[currentBoardId].modified = new Date().toISOString();
+        render();
+        renderBoardsList();
+    }
+
+    function showEditForm(id) {
+        editingId = id;
+        var t = tasks[id];
+        var formHtml = '<div class="form">' +
+            '<input type="text" id="editTitle" value="' + t.title.replace(/"/g, '&quot;') + '" autofocus>' +
+            '<textarea id="editDescription" placeholder="Description (optional)">' + (t.description || '') + '</textarea>' +
+            '<select id="editPriority">' +
+            '<option value="high"' + (t.priority === 'high' ? ' selected' : '') + '>High Priority</option>' +
+            '<option value="medium"' + (t.priority === 'medium' ? ' selected' : '') + '>Medium Priority</option>' +
+            '<option value="low"' + (t.priority === 'low' ? ' selected' : '') + '>Low Priority</option>' +
+            '</select>' +
+            '<input type="text" id="editDate" value="' + t.date + '" placeholder="Due date (e.g., Nov 20)">' +
+            '<div class="form-buttons">' +
+            '<button class="btn-save" onclick="saveEdit()">Save</button>' +
+            '<button class="btn-delete" onclick="deleteTask(' + id + ')">Delete</button>' +
+            '<button class="btn-cancel" onclick="render()">Cancel</button>' +
+            '</div>' +
+            '</div>';
+        
+        var taskElements = document.querySelectorAll('.task');
+        for (var i = 0; i < taskElements.length; i++) {
+            if (taskElements[i].getAttribute('data-id') == id) {
+                taskElements[i].outerHTML = formHtml;
+                setTimeout(function() {
+                    document.getElementById('editTitle').focus();
+                }, 10);
+                break;
+            }
+        }
+    }
+
+    function saveEdit() {
+        var title = document.getElementById('editTitle').value;
+        if (!title.trim()) {
+            render();
+            return;
+        }
+        var description = document.getElementById('editDescription').value;
+        var priority = document.getElementById('editPriority').value;
+        var date = document.getElementById('editDate').value;
+        
+        tasks[editingId] = {title: title, description: description, priority: priority, date: date, col: tasks[editingId].col};
+        editingId = null;
+        boards[currentBoardId].modified = new Date().toISOString();
+        render();
+        renderBoardsList();
+    }
+
+    function deleteTask(id) {
+        delete tasks[id];
+        boards[currentBoardId].modified = new Date().toISOString();
+        render();
+        renderBoardsList();
+    }
+
+    function render() {
+        editingId = null;
+        document.getElementById('backlog').innerHTML = '';
+        document.getElementById('todo').innerHTML = '';
+        document.getElementById('inprogress').innerHTML = '';
+        document.getElementById('review').innerHTML = '';
+        document.getElementById('done').innerHTML = '';
+        
+        for (var id in tasks) {
+            var t = tasks[id];
+            var html = '<div class="task" data-id="' + id + '" draggable="true" ' +
+                'ondragstart="handleDragStart(event, ' + id + ')" ' +
+                'ondragend="handleDragEnd(event)" ' +
+                'onclick="showEditForm(' + id + ')">' +
+                '<div class="task-title">' + t.title + '</div>';
+            
+            if (t.description) {
+                html += '<div class="task-description">' + t.description + '</div>';
+            }
+            
+            html += '<div><span class="priority ' + t.priority + '">' + t.priority.toUpperCase() + '</span> 📅 ' + (t.date || 'No date') + '</div>' +
+                '</div>';
+            document.getElementById(t.col).innerHTML += html;
+        }
+        
+        var count = 0;
+        for (var id in tasks) {
+            if (tasks[id].col === 'inprogress') count++;
+        }
+        document.getElementById('wip').textContent = count + '/3';
+    }
+
+    render();
+    renderBoardsList();
+    </script>
+</body>
+</html>
