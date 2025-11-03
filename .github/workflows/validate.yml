@@ -1,0 +1,84 @@
+name: Validate Changes
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if index.html exists
+        run: |
+          if [ ! -f "index.html" ]; then
+            echo "❌ Error: index.html not found"
+            exit 1
+          fi
+          echo "✅ index.html exists"
+
+      - name: Validate HTML structure
+        run: |
+          # Check for basic HTML structure
+          if grep -q "<!DOCTYPE html>" index.html && \
+             grep -q "<html>" index.html && \
+             grep -q "<head>" index.html && \
+             grep -q "<body>" index.html; then
+            echo "✅ HTML structure is valid"
+          else
+            echo "❌ HTML structure is invalid"
+            exit 1
+          fi
+
+      - name: Check for required elements
+        run: |
+          # Check for sidebar
+          if grep -q 'class="sidebar"' index.html; then
+            echo "✅ Sidebar found"
+          else
+            echo "❌ Sidebar not found"
+            exit 1
+          fi
+
+          # Check for resize handle
+          if grep -q 'sidebar-resize-handle' index.html; then
+            echo "✅ Resize handle found"
+          else
+            echo "⚠️  Warning: Resize handle not found"
+          fi
+
+      - name: Validate JavaScript
+        run: |
+          # Check for main functions
+          if grep -q "function render()" index.html && \
+             grep -q "function toggleSidebar()" index.html; then
+            echo "✅ Core JavaScript functions found"
+          else
+            echo "❌ Core JavaScript functions missing"
+            exit 1
+          fi
+
+      - name: File size check
+        run: |
+          SIZE=$(wc -c < index.html)
+          echo "📦 File size: $SIZE bytes"
+          if [ $SIZE -gt 200000 ]; then
+            echo "⚠️  Warning: File is large (>200KB)"
+          else
+            echo "✅ File size is reasonable"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All validation checks passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**File**: index.html" >> $GITHUB_STEP_SUMMARY
+          echo "**Size**: $(wc -c < index.html) bytes" >> $GITHUB_STEP_SUMMARY
+          echo "**Lines**: $(wc -l < index.html) lines" >> $GITHUB_STEP_SUMMARY
