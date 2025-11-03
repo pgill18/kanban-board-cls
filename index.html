@@ -20,6 +20,9 @@
             display: flex;
             flex-direction: column;
         }
+        .sidebar:not(.minimized) {
+            transition: transform 0.3s ease;
+        }
         .sidebar.minimized {
             transform: translateX(-100%);
         }
@@ -27,7 +30,25 @@
             background: #2d2d2d;
             border-right-color: #555;
         }
-        
+
+        .sidebar-resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 5px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 1000;
+        }
+        .sidebar-resize-handle:hover {
+            background: #667eea;
+        }
+        .sidebar-resize-handle.resizing {
+            background: #667eea;
+        }
+
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid #ddd;
@@ -438,6 +459,7 @@
         <div class="sidebar-content" id="boardsList">
             <!-- Board list will be rendered here -->
         </div>
+        <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
     </div>
     
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle boards list">📁</button>
@@ -634,6 +656,8 @@
     var editingId = null;
     var draggedTaskId = null;
     var currentView = 'kanban'; // 'kanban' or 'document'
+    var sidebarWidth = 16.67; // percentage
+    var isResizing = false;
 
     function formatDate(isoString) {
         var date = new Date(isoString);
@@ -644,9 +668,9 @@
         var sidebar = document.getElementById('sidebar');
         var toggle = document.getElementById('sidebarToggle');
         var mainContent = document.getElementById('mainContent');
-        
+
         sidebarMinimized = !sidebarMinimized;
-        
+
         if (sidebarMinimized) {
             sidebar.classList.add('minimized');
             toggle.classList.add('minimized');
@@ -656,6 +680,51 @@
             toggle.classList.remove('minimized');
             mainContent.classList.remove('expanded');
         }
+    }
+
+    function updateSidebarWidth(widthPercent) {
+        var sidebar = document.getElementById('sidebar');
+        var toggle = document.getElementById('sidebarToggle');
+        var mainContent = document.getElementById('mainContent');
+
+        sidebar.style.width = widthPercent + '%';
+        toggle.style.left = widthPercent + '%';
+        mainContent.style.marginLeft = widthPercent + '%';
+        sidebarWidth = widthPercent;
+    }
+
+    function initSidebarResize() {
+        var resizeHandle = document.getElementById('sidebarResizeHandle');
+
+        resizeHandle.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            resizeHandle.classList.add('resizing');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+
+            var windowWidth = window.innerWidth;
+            var newWidthPercent = (e.clientX / windowWidth) * 100;
+
+            // Constrain between 10% and 40%
+            if (newWidthPercent < 10) newWidthPercent = 10;
+            if (newWidthPercent > 40) newWidthPercent = 40;
+
+            updateSidebarWidth(newWidthPercent);
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
     }
 
     function renderBoardsList() {
@@ -1016,6 +1085,7 @@
 
     render();
     renderBoardsList();
+    initSidebarResize();
     </script>
 </body>
 </html>
