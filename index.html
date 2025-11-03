@@ -173,6 +173,9 @@
             display: flex;
             flex-direction: column;
         }
+        .artifacts-sidebar:not(.minimized) {
+            transition: transform 0.3s ease;
+        }
         .artifacts-sidebar.minimized {
             transform: translateX(100%);
         }
@@ -180,7 +183,25 @@
             background: #2d2d2d;
             border-left-color: #555;
         }
-        
+
+        .artifacts-resize-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 5px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 1000;
+        }
+        .artifacts-resize-handle:hover {
+            background: #667eea;
+        }
+        .artifacts-resize-handle.resizing {
+            background: #667eea;
+        }
+
         .artifacts-header {
             padding: 20px;
             border-bottom: 1px solid #ddd;
@@ -466,6 +487,7 @@
     
     <!-- Artifacts Sidebar -->
     <div class="artifacts-sidebar" id="artifactsSidebar">
+        <div class="artifacts-resize-handle" id="artifactsResizeHandle"></div>
         <div class="artifacts-header">Task Artifacts</div>
         <div class="artifacts-content" id="artifactsList">
             <div class="artifacts-empty">Select a task to view artifacts</div>
@@ -658,6 +680,8 @@
     var currentView = 'kanban'; // 'kanban' or 'document'
     var sidebarWidth = 16.67; // percentage
     var isResizing = false;
+    var artifactsWidth = 16.67; // percentage
+    var isResizingArtifacts = false;
 
     function formatDate(isoString) {
         var date = new Date(isoString);
@@ -720,6 +744,51 @@
         document.addEventListener('mouseup', function() {
             if (isResizing) {
                 isResizing = false;
+                resizeHandle.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    }
+
+    function updateArtifactsWidth(widthPercent) {
+        var artifactsSidebar = document.getElementById('artifactsSidebar');
+        var artifactsToggle = document.getElementById('artifactsToggle');
+        var mainContent = document.getElementById('mainContent');
+
+        artifactsSidebar.style.width = widthPercent + '%';
+        artifactsToggle.style.right = widthPercent + '%';
+        mainContent.style.marginRight = widthPercent + '%';
+        artifactsWidth = widthPercent;
+    }
+
+    function initArtifactsResize() {
+        var resizeHandle = document.getElementById('artifactsResizeHandle');
+
+        resizeHandle.addEventListener('mousedown', function(e) {
+            isResizingArtifacts = true;
+            resizeHandle.classList.add('resizing');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizingArtifacts) return;
+
+            var windowWidth = window.innerWidth;
+            var newWidthPercent = ((windowWidth - e.clientX) / windowWidth) * 100;
+
+            // Constrain between 10% and 40%
+            if (newWidthPercent < 10) newWidthPercent = 10;
+            if (newWidthPercent > 40) newWidthPercent = 40;
+
+            updateArtifactsWidth(newWidthPercent);
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isResizingArtifacts) {
+                isResizingArtifacts = false;
                 resizeHandle.classList.remove('resizing');
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
@@ -1086,6 +1155,7 @@
     render();
     renderBoardsList();
     initSidebarResize();
+    initArtifactsResize();
     </script>
 </body>
 </html>
