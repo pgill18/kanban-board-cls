@@ -567,6 +567,7 @@
     var nextBoardId = 9;
     var currentBoardId = 1;
     var sidebarMinimized = false;
+    var artifactsMinimized = false;
     
     var boards = {
         1: {
@@ -703,6 +704,24 @@
             sidebar.classList.remove('minimized');
             toggle.classList.remove('minimized');
             mainContent.classList.remove('expanded');
+        }
+    }
+
+    function toggleArtifacts() {
+        var artifactsSidebar = document.getElementById('artifactsSidebar');
+        var toggle = document.getElementById('artifactsToggle');
+        var mainContent = document.getElementById('mainContent');
+
+        artifactsMinimized = !artifactsMinimized;
+
+        if (artifactsMinimized) {
+            artifactsSidebar.classList.add('minimized');
+            toggle.classList.add('minimized');
+            mainContent.classList.add('artifacts-collapsed');
+        } else {
+            artifactsSidebar.classList.remove('minimized');
+            toggle.classList.remove('minimized');
+            mainContent.classList.remove('artifacts-collapsed');
         }
     }
 
